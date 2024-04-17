@@ -1,0 +1,4 @@
+commands:
+  ano:
+    usage: "!ano <your message here>"
+    description: "Anonymises a message, so it appears to come from the bot rather than you"
