@@ -1,0 +1,27 @@
+[
+    {
+        "id": "moonfall",
+        "level": 3,
+        "name": "Moonfall Keep"
+    },
+    {
+        "id": "watchold",
+        "level": 5,
+        "name": "Watchold"
+    },
+    {
+        "id": "festivia",
+        "level": 7,
+        "name": "Keep Festivia"
+    },
+    {
+        "id": "momofort",
+        "level": 5,
+        "name": "Momofort"
+    },
+    {
+        "id": "steadfast",
+        "level": 5,
+        "name": "Steadfast Citadel"
+    }
+]
