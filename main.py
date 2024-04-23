@@ -1,6 +1,7 @@
 import os
 import typing
 import logging
+import logging.handlers
 import dotenv
 from enum import Enum
 import datetime
@@ -11,6 +12,14 @@ from distutils.util import strtobool
 dotenv.load_dotenv()
 DEVELOPMENT_MODE = bool(strtobool(os.getenv('DEVELOPMENT', False)))
 GUILD_ID = os.getenv('DISCORD_GUILD')
+
+
+# Setup logging to go to rotating files
+discord_logger = logging.getLogger('discord')
+handler = logging.handlers.TimedRotatingFileHandler(filename='logs/bot.log', when='W0', backupCount=4, utc=True, atTime=datetime.time())
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+discord_logger.addHandler(handler)
 
 
 def expected_guild():
