@@ -9,9 +9,10 @@ import discord
 from discord.ext import commands
 from distutils.util import strtobool
 
+
+# Ensure we load environment variables
 dotenv.load_dotenv()
 DEVELOPMENT_MODE = bool(strtobool(os.getenv('DEVELOPMENT', False)))
-GUILD_ID = os.getenv('DISCORD_GUILD')
 
 
 # Setup logging to go to rotating files
@@ -22,24 +23,10 @@ handler.setFormatter(formatter)
 discord_logger.addHandler(handler)
 
 
-def expected_guild():
-    if GUILD_ID:
-        try:
-            return discord.Object(id=GUILD_ID)
-        except Exception as e:
-            print('Could not load guild from ID in .env: [' + type(e) + '] ' + str(e))
-            exit()
-    elif os.getenv('DEVELOPMENT'):
-        print('Allowing null guild for development/testing')
-        return None
-    else:
-        raise Exception('No Guild ID set in .env and we are not in development mode')
-
-
 class ELKBot(commands.Bot):
-    def __init__(self, *args, dev_mode=False, expected_guild, **kwargs):
+    def __init__(self, *args, dev_mode=False, **kwargs):
         self.dev_mode = dev_mode
-        self.expected_guild = expected_guild
+        self.expected_guild = None
         self.bot_channel = None
 
         self.logger = logging.getLogger('discord.elkbot')
@@ -130,12 +117,16 @@ class ELKBot(commands.Bot):
         self.logger.debug(f'ELKBot.on_ready()')
         start_message = await self.log_to_discord(f'ELKBot is starting: <t:{datetime.datetime.utcnow():%s}:F>')
 
+        # Limit bot to a single expected guild
         for guild in self.guilds:
-            if self.dev_mode and self.expected_guild is None:
-                self.logger.warning('WARNING: Allowing any guild as we are in development mode')
-            elif guild.id != self.expected_guild.id:
-                self.logger.warning(f'WARNING: Bot connected to unexpected Guild')
-            self.logger.info(f'We have logged in as {self.user} for {guild} ({guild.id})')
+            if guild.id == int(os.getenv('DISCORD_GUILD', 1)):
+                self.expected_guild = guild
+                self.logger.info(f'We have logged in as {self.user} for {guild} ({guild.id})')
+            elif self.dev_mode:
+                self.logger.warning('Allowing unexpected guild as we are in development mode')
+            else:
+                self.logger.error(f'Bot connected to unexpected Guild, {guild} ({guild.id}), time to leave')
+                await guild.leave()
 
         if self.expected_guild is None:
             self.logger.info('Not syncing commands to guild as there is no configured expected guild')
@@ -203,7 +194,7 @@ class ELKBot(commands.Bot):
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = ELKBot(command_prefix='!', intents=intents, expected_guild=expected_guild(), dev_mode=DEVELOPMENT_MODE)
+bot = ELKBot(command_prefix='!', intents=intents, dev_mode=DEVELOPMENT_MODE)
 
 # Add the global bot check
 bot.check(bot.global_check)
