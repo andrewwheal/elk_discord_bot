@@ -12,7 +12,6 @@ from distutils.util import strtobool
 
 # Ensure we load environment variables
 dotenv.load_dotenv()
-DEVELOPMENT_MODE = bool(strtobool(os.getenv('DEVELOPMENT', False)))
 
 
 # Setup logging to go to rotating files
@@ -24,8 +23,8 @@ discord_logger.addHandler(handler)
 
 
 class ELKBot(commands.Bot):
-    def __init__(self, *args, dev_mode=False, **kwargs):
-        self.dev_mode = dev_mode
+    def __init__(self, *args, **kwargs):
+        self.dev_mode = bool(strtobool(os.getenv('DEVELOPMENT', False)))
         self.expected_guild = None
         self.bot_channel = None
 
@@ -194,7 +193,7 @@ class ELKBot(commands.Bot):
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = ELKBot(command_prefix='!', intents=intents, dev_mode=DEVELOPMENT_MODE)
+bot = ELKBot(command_prefix='!', intents=intents)
 
 # Add the global bot check
 bot.check(bot.global_check)
