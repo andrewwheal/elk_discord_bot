@@ -23,6 +23,8 @@ discord_logger.addHandler(handler)
 
 
 class ELKBot(commands.Bot):
+    # region Bot Setup
+
     def __init__(self, *args, **kwargs):
         self.dev_mode = bool(strtobool(os.getenv('DEVELOPMENT', False)))
         self.expected_guild = None
@@ -44,6 +46,33 @@ class ELKBot(commands.Bot):
         await bot.load_extension('commands.siege')
         await bot.load_extension('commands.v1')
 
+    async def on_ready(self):
+        self.logger.debug(f'ELKBot.on_ready()')
+        start_message = await self.log_to_discord(f'ELKBot is starting: <t:{datetime.datetime.utcnow():%s}:F>')
+
+        # Limit bot to a single expected guild
+        for guild in self.guilds:
+            if guild.id == int(os.getenv('DISCORD_GUILD', 1)):
+                self.expected_guild = guild
+                self.logger.info(f'We have logged in as {self.user} for {guild} ({guild.id})')
+            elif self.dev_mode:
+                self.logger.warning('Allowing unexpected guild as we are in development mode')
+            else:
+                self.logger.error(f'Bot connected to unexpected Guild, {guild} ({guild.id}), time to leave')
+                await guild.leave()
+
+        if self.expected_guild is None:
+            self.logger.info('Not syncing commands to guild as there is no configured expected guild')
+        else:
+            self.tree.copy_global_to(guild=self.expected_guild)
+            await self.tree.sync(guild=self.expected_guild)
+
+        self.logger.info('ELKBot ready!')
+        await start_message.edit(content=f'ELKBot is up and running: <t:{datetime.datetime.utcnow():%s}:F>')
+
+    # endregion
+    # region Command Checks
+
     def global_check(self, ctx):
         # TODO do we want this?
         # if self.dev_mode and self.is_owner(ctx.author):
@@ -64,6 +93,9 @@ class ELKBot(commands.Bot):
 
         # All checks have passed
         return True
+
+    # endregion
+    # region Helper methods
 
     async def get_bot_channel(self):
         bot_channel_id = os.getenv('DISCORD_BOT_CHANNEL')
@@ -91,6 +123,9 @@ class ELKBot(commands.Bot):
             message += ' with `{content}`'
 
         await self.log_to_discord(message)
+
+    # endregion
+    # region Error handling
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.CheckFailure):
@@ -120,32 +155,8 @@ class ELKBot(commands.Bot):
 
         return super(ELKBot, self).on_error(event, *args, **kwargs)
 
-    async def on_ready(self):
-        self.logger.debug(f'ELKBot.on_ready()')
-        start_message = await self.log_to_discord(f'ELKBot is starting: <t:{datetime.datetime.utcnow():%s}:F>')
-
-        # Limit bot to a single expected guild
-        for guild in self.guilds:
-            if guild.id == int(os.getenv('DISCORD_GUILD', 1)):
-                self.expected_guild = guild
-                self.logger.info(f'We have logged in as {self.user} for {guild} ({guild.id})')
-            elif self.dev_mode:
-                self.logger.warning('Allowing unexpected guild as we are in development mode')
-            else:
-                self.logger.error(f'Bot connected to unexpected Guild, {guild} ({guild.id}), time to leave')
-                await guild.leave()
-
-        if self.expected_guild is None:
-            self.logger.info('Not syncing commands to guild as there is no configured expected guild')
-        else:
-            self.tree.copy_global_to(guild=self.expected_guild)
-            await self.tree.sync(guild=self.expected_guild)
-
-        self.logger.info('ELKBot ready!')
-        await start_message.edit(content=f'ELKBot is up and running: <t:{datetime.datetime.utcnow():%s}:F>')
-
-    ################
-    ## Debug Logging
+    # endregion
+    # region Debug Logging
 
     async def start(self, *args, **kwargs):
         self.logger.debug(f'ELKBot.start({args}, {kwargs})')
@@ -175,6 +186,8 @@ class ELKBot(commands.Bot):
 
     async def on_resumed(self):
         self.logger.debug(f'Bot has resumed')
+
+    # endregion
 
     # TODO work out a way to generically log slash/context commands
     # async def on_interaction(self, interaction: discord.Interaction):
@@ -206,7 +219,9 @@ bot = ELKBot(command_prefix='!', intents=intents)
 # Add the global bot check
 bot.check(bot.global_check)
 
+# region Core Commands
 
+# TODO is there any way to get this into the bot class? (since it's "core" functionality)
 @bot.command(name='reload')
 async def reload(ctx: commands.Context):
     await ctx.message.delete()
@@ -225,5 +240,6 @@ async def reload(ctx: commands.Context):
         await ctx.bot.tree.sync(guild=ctx.bot.expected_guild)
         await sync_msg.edit(content=f'Command tree synced at <t:{datetime.datetime.utcnow():%s}:F>')
 
+# endregion
 
 bot.run(os.getenv('DISCORD_TOKEN'))
