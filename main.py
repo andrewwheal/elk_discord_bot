@@ -38,14 +38,14 @@ def expected_guild():
 
 class ELKBot(commands.Bot):
     def __init__(self, *args, dev_mode=False, expected_guild, **kwargs):
-        print(f'ELKBot.__init__({args}, {kwargs})')
-
         self.dev_mode = dev_mode
         self.expected_guild = expected_guild
         self.bot_channel = None
 
         self.logger = logging.getLogger('discord.elkbot')
         self.logger.setLevel(logging.DEBUG)
+
+        self.logger.info(f'ELKBot.__init__({args}, {kwargs})')
 
         super().__init__(*args, **kwargs)
 
