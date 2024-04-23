@@ -101,8 +101,16 @@ class ELKBot(commands.Bot):
                 pass # how to handle interaction?
             else:
                 await ctx.message.delete(delay=11) # delayed to after error message auto-deleted
+        elif isinstance(error, commands.CommandNotFound):
+            self.logger.error(f'Bot command not found, by user {ctx.author.name}: {error} - {type(ctx)}')
+
+            # TODO is there a better way to get the "name" of the unknown command
+            command_error_msg = str(error)
+            command = command_error_msg[9:command_error_msg.find('"', 9)]
+
+            await self.log_to_discord(f"Unknown command `{command}` tried to be invoked by {ctx.author.mention} in {ctx.channel.mention} at {ctx.message.jump_url}")
         else:
-            self.logger.error(f'Bot command error: {error}')
+            self.logger.error(f'Bot command error: {type(error)} {error}')
             await ctx.send(f"Bot command error: {error}", ephemeral=True)
             await self.log_to_discord(f"Bot command error: {error}")
 
