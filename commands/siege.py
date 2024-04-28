@@ -67,6 +67,21 @@ class Siege(discord.ext.commands.Cog):
             for day in days if current.lower() in day['name']
         ]
 
+    @siege.command(description='Add a new city (etc) that we can siege')
+    async def add_city(self, interaction: discord.Interaction, name: str, level: int):
+        id = name.replace(' ', '').lower()
+        self.cities.append({"id": id, "name": name, "level": level})
+        self.save_cities()
+        await interaction.response.send_message('City added', ephemeral=True)
+
+    @siege.command(description='List the currently configured cities available for us to siege')
+    async def list_cities(self, interaction: discord.Interaction):
+        message = 'Here are the cities we can siege that are currently configured:'
+        for city in self.cities:
+            message += f"\n\tLv.{city['level']} {city['name']}"
+
+        await interaction.response.send_message(message, ephemeral=True)
+
 
 async def setup(bot):
     await bot.add_cog(Siege(bot=bot))
