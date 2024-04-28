@@ -8,28 +8,34 @@ import discord.ext.commands
 import discord.app_commands
 
 
-cities = [
-    {"id": "moonfall", "level": 3, "name": "Moonfall Keep"},
-    {"id": "watchold", "level": 5, "name": "Watchold"},
-    {"id": "festivia", "level": 7, "name": "Keep Festivia"},
-    {"id": "momofort", "level": 5, "name": "Momofort"},
-    {"id": "steadfast", "level": 5, "name": "Steadfast Citadel"},
-]
-
-
 class Siege(discord.ext.commands.Cog):
     config_file = f"{os.getcwd()}/config/cities.json"
     siege = discord.app_commands.Group(name='siege', description='Siege things')
 
     def __init__(self, bot):
         self.bot = bot
-        self.cities = cities
+
+        self.cities = self.load_cities()
 
     async def cog_load(self):
         print('Siege cog loaded')
 
     async def cog_unload(self):
         print('Siege cog unloaded')
+
+    def load_cities(self):
+        try:
+            with open(self.config_file, 'r') as cities_config:
+                return json.load(cities_config)
+        except FileNotFoundError as e:
+            print('Cities config not found, creating it')
+            with open(self.config_file, 'w') as cities_config:
+                json.dump([], cities_config)
+            return []
+
+    def save_cities(self):
+        with open(self.config_file, 'w') as cities_config:
+            json.dump(self.cities, cities_config, indent=4)
 
     @siege.command(description='Schedule a siege on a city')
     @discord.app_commands.describe(city='Select the city we are going to siege', day='Pick which day the siege will take place (or enter in format YYYY-MM-DD)', time='Set the start time of the siege, in 24 hour UTC')
