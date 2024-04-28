@@ -64,8 +64,53 @@ class Siege(discord.ext.commands.Cog):
     @siege.command(description='Schedule a siege on a city')
     @discord.app_commands.describe(city='Select the city we are going to siege', day='Pick which day the siege will take place (or enter in format YYYY-MM-DD)', time='Set the start time of the siege, in 24 hour UTC')
     async def start(self, interaction: discord.Interaction, city: str, day: str, time: str):
-        time = datetime.datetime.fromisoformat(f'{day}T{time}')
-        await interaction.response.send_message(f"Lets start a siege on {city} at <t:{time:%s}:F> (that's <t:{time:%s}:R>)")
+        # Detect wrong channel
+        if not interaction.channel.name.endswith('-missions'):
+            return await interaction.response.send_message('Sieges must be started in a `s00-missions` channel', ephemeral=True)
+
+        await self.bot.log_command_to_discord('siege.start', interaction.user, interaction.channel, {'city': city, 'day': day, 'time': time})
+
+        # Validate time, it's the only manually input data
+        try:
+            datetime.time.fromisoformat(time)
+        except:
+            self.logger.exception(f'siege.start time not valid: {time}')
+            raise ValueError('The provided time is not valid')
+
+        city = self.get_city(city)
+        start_string = f'{day}T{time}Z'
+        start_time = datetime.datetime.fromisoformat(f'{day}T{time}Z')
+
+        await interaction.response.send_message(f"Scheduling siege of {city.full_name} at <t:{start_time:%s}:F> (that's <t:{start_time:%s}:R>)", ephemeral=True)
+
+        reactions = {
+            "✅": "if you will be there",
+            "❓": "if you're not sure",
+            "❌": "if you know you won't make it",
+        }
+
+        role = discord.utils.get(interaction.guild.roles, name='Server 01')
+
+        message_content = f"# {city.full_name}\nSiege will start at <t:{start_time:%s}:F> (that's <t:{start_time:%s}:R>)"
+        # for reaction, reason in reactions.items():
+        #     message_content += f"\n\t{reaction} {reason}"
+
+        # thread = await interaction.channel.create_thread(name=f"Siege of {city.full_name}", type=discord.ChannelType.public_thread)
+        # first_message = await thread.send(message_content)
+
+        first_message = await interaction.channel.send(message_content)
+        thread = await first_message.create_thread(name=f"Siege of {city.full_name}")
+
+        second_content = f'{role.mention} React with whether you will be joining this siege'
+        for reaction, reason in reactions.items():
+            second_content += f"\n\t{reaction} {reason}"
+        second_message = await thread.send(second_content)
+
+        for reaction in reactions:
+            try:
+                await second_message.add_reaction(reaction)
+            except:
+                self.logger.exception('Could not add reaction')
 
     @start.autocomplete('city')
     async def autocomplete_city(self, interaction: discord.Interaction, current: str) -> List[discord.app_commands.Choice[str]]:
@@ -94,8 +139,19 @@ class Siege(discord.ext.commands.Cog):
             for day in days if current.lower() in day['name']
         ]
 
+    @start.error
+    async def start_on_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
+        self.logger.warning(f'siege.start error: {error}')
+
+        if error.original:
+            await interaction.response.send_message(f'There was an error scheduling the siege: {error.original}', ephemeral=True)
+        else:
+            await interaction.response.send_message(f'There was an error scheduling the siege: {error}', ephemeral=True)
+
     @siege.command(description='Add a new city (etc) that we can siege')
     async def add_city(self, interaction: discord.Interaction, name: str, level: int):
+        await self.bot.log_command_to_discord('siege.add_city', interaction.user, interaction.channel, {'name': name, 'level': level})
+
         id = name.replace(' ', '').lower()
         self.cities.append({"id": id, "name": name, "level": level})
         self.save_cities()
