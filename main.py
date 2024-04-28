@@ -120,7 +120,7 @@ class ELKBot(commands.Bot):
         message = f'Command `{command}` called by {user.mention} in {channel.mention}'
 
         if content:
-            message += ' with `{content}`'
+            message += f' with `{content}`'
 
         await self.log_to_discord(message)
 
