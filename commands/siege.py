@@ -1,5 +1,6 @@
 import os
 from typing import List
+import logging
 import datetime
 from enum import Enum
 import json
@@ -14,14 +15,15 @@ class Siege(discord.ext.commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.logger = logging.getLogger(f'discord.elkbot.{__name__}')
 
         self.cities = self.load_cities()
 
     async def cog_load(self):
-        print('Siege cog loaded')
+        self.logger.info('Siege cog loaded')
 
     async def cog_unload(self):
-        print('Siege cog unloaded')
+        self.logger.info('Siege cog unloaded')
 
     def load_cities(self):
         try:
@@ -76,6 +78,8 @@ class Siege(discord.ext.commands.Cog):
 
     @siege.command(description='List the currently configured cities available for us to siege')
     async def list_cities(self, interaction: discord.Interaction):
+        await self.bot.log_command_to_discord('siege.list_cities', interaction.user, interaction.channel)
+
         message = 'Here are the cities we can siege that are currently configured:'
         for city in self.cities:
             message += f"\n\tLv.{city['level']} {city['name']}"
