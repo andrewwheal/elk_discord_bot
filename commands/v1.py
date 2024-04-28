@@ -10,7 +10,7 @@ import flag
 from discord.ext import commands
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from langdetect import detect, DetectorFactory
+from langdetect import detect, DetectorFactory, LangDetectException
 from googletrans import Translator
 
 
@@ -405,8 +405,14 @@ async def setup(bot):
                         translated = translator.translate(message.content, src=detected_lang, dest='en')
                         flag_emoji = f":flag_{detected_lang}:"
                         await message.reply(f"{flag_emoji} -> :flag_gb: ・ {translated.text}")
-
+            except LangDetectException as e:
+                if str(e) == 'No features in text.':
+                    logger.warning(f'Auto translate: no feature in text "{message.content}"')
+                else:
+                    logger.exception(f'Could not detect language for auto translate ({e.code})')
+                    await send_error_to_discord(ctx, 'Could not detect language for auto translate')
             except Exception as e:
+                logger.exception(e)
                 error_message = f"Translation Error: {str(e)}"
                 await message.channel.send(error_message)
                 await send_error_to_discord(ctx, error_message)
@@ -426,15 +432,11 @@ async def setup(bot):
         flag_code = flag.dflagize(reaction.emoji)
         flag_match = re.match(r":([A-Z]{2}):", flag_code)
 
-        logger.debug('flag match:', flag_match)
-
         if not flag_match:
             return
 
         lang_code = flag_match.group(1)
         original_message = reaction.message
-
-        logger.debug('orig:', original_message.content)
 
         if lang_code.lower() in ['gb', 'us']:
             lang_code = 'en'
