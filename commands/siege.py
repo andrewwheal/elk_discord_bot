@@ -9,6 +9,17 @@ import discord.ext.commands
 import discord.app_commands
 
 
+class City(NamedTuple):
+    """Represents a PvE City/Citadel we can siege"""
+    id: str
+    name: str
+    level: int
+
+    @property
+    def full_name(self):
+        return f'Lv.{self.level} {self.name}'
+
+
 class Siege(discord.ext.commands.Cog):
     config_file = f"{os.getcwd()}/config/cities.json"
     siege = discord.app_commands.Group(name='siege', description='Siege things')
@@ -26,18 +37,29 @@ class Siege(discord.ext.commands.Cog):
         self.logger.info('Siege cog unloaded')
 
     def load_cities(self):
+        """Load cities from list of dicts into dict of NamedTuples"""
         try:
             with open(self.config_file, 'r') as cities_config:
-                return json.load(cities_config)
+                data = json.load(cities_config)
+
+            return {city['id']:City(**city) for city in data}
         except FileNotFoundError as e:
-            print('Cities config not found, creating it')
-            with open(self.config_file, 'w') as cities_config:
-                json.dump([], cities_config)
+            self.logger.warning('Cities config not found')
+            return []
+        except Exception:
+            self.logger.exception('Could not load cities from config')
             return []
 
     def save_cities(self):
-        with open(self.config_file, 'w') as cities_config:
-            json.dump(self.cities, cities_config, indent=4)
+        """Save our dict of City NamedTuples as a list of dicts"""
+        try:
+            with open(self.config_file, 'w') as cities_config:
+                json.dump(list(city._asdict() for city in self.cities.values()), cities_config, indent=4)
+        except Exception:
+            self.logger.exception('Could not save cities to config')
+
+    def get_city(self, city_id: str) -> dict:
+        return self.cities[city_id]
 
     @siege.command(description='Schedule a siege on a city')
     @discord.app_commands.describe(city='Select the city we are going to siege', day='Pick which day the siege will take place (or enter in format YYYY-MM-DD)', time='Set the start time of the siege, in 24 hour UTC')
@@ -48,10 +70,13 @@ class Siege(discord.ext.commands.Cog):
     @start.autocomplete('city')
     async def autocomplete_city(self, interaction: discord.Interaction, current: str) -> List[discord.app_commands.Choice[str]]:
         print('siege city autocomplete')
-        return [
-            discord.app_commands.Choice(name=f"Lv.{city['level']} {city['name']}", value=city['id'])
-            for city in self.cities if current.lower() in city['name'].lower()
-        ]
+        try:
+            return [
+                discord.app_commands.Choice(name=city.full_name, value=city.id)
+                for city in self.cities.values() if current.lower() in city.name.lower()
+            ]
+        except:
+            self.logger.exception('Error autocompleting city for siege')
 
     @start.autocomplete('day')
     async def autocomplete_day(self, interaction: discord.Interaction, current: str) -> List[discord.app_commands.Choice[str]]:
