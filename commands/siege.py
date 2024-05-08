@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, NamedTuple
 import logging
 import datetime
 from enum import Enum
@@ -22,7 +22,7 @@ class City(NamedTuple):
 
 class Siege(discord.ext.commands.Cog):
     config_file = f"{os.getcwd()}/config/cities.json"
-    siege = discord.app_commands.Group(name='siege', description='Siege things')
+    siege = discord.app_commands.Group(name='siege', description='Manage Sieges')
 
     def __init__(self, bot):
         self.bot = bot
@@ -66,7 +66,7 @@ class Siege(discord.ext.commands.Cog):
     async def start(self, interaction: discord.Interaction, city: str, day: str, time: str):
         # Detect wrong channel
         if not interaction.channel.name.endswith('-missions'):
-            return await interaction.response.send_message('Sieges must be started in a `s00-missions` channel', ephemeral=True)
+            return await interaction.response.send_message('Sieges must be started in the `s01-missions` channel', ephemeral=True)
 
         await self.bot.log_command_to_discord('siege.start', interaction.user, interaction.channel, {'city': city, 'day': day, 'time': time})
 
@@ -79,7 +79,7 @@ class Siege(discord.ext.commands.Cog):
 
         city = self.get_city(city)
         start_string = f'{day}T{time}Z'
-        start_time = datetime.datetime.fromisoformat(f'{day}T{time}Z')
+        start_time = datetime.datetime.fromisoformat(start_string)
 
         await interaction.response.send_message(f"Scheduling siege of {city.full_name} at <t:{start_time:%s}:F> (that's <t:{start_time:%s}:R>)", ephemeral=True)
 
@@ -92,29 +92,20 @@ class Siege(discord.ext.commands.Cog):
         role = discord.utils.get(interaction.guild.roles, name='Server 01')
 
         message_content = f"# {city.full_name}\nSiege will start at <t:{start_time:%s}:F> (that's <t:{start_time:%s}:R>)"
-        # for reaction, reason in reactions.items():
-        #     message_content += f"\n\t{reaction} {reason}"
-
-        # thread = await interaction.channel.create_thread(name=f"Siege of {city.full_name}", type=discord.ChannelType.public_thread)
-        # first_message = await thread.send(message_content)
+        message_content += f'\n{role.mention} React with whether you will be joining this siege'
+        for reaction, reason in reactions.items():
+            message_content += f"\n\t{reaction} {reason}"
 
         first_message = await interaction.channel.send(message_content)
-        thread = await first_message.create_thread(name=f"Siege of {city.full_name}")
-
-        second_content = f'{role.mention} React with whether you will be joining this siege'
-        for reaction, reason in reactions.items():
-            second_content += f"\n\t{reaction} {reason}"
-        second_message = await thread.send(second_content)
 
         for reaction in reactions:
             try:
-                await second_message.add_reaction(reaction)
-            except:
-                self.logger.exception('Could not add reaction')
+                await first_message.add_reaction(reaction)
+            except Exception as e:
+                self.logger.exception('Could not add reaction to siege message: %s', str(e))
 
     @start.autocomplete('city')
     async def autocomplete_city(self, interaction: discord.Interaction, current: str) -> List[discord.app_commands.Choice[str]]:
-        print('siege city autocomplete')
         try:
             return [
                 discord.app_commands.Choice(name=city.full_name, value=city.id)
