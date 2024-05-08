@@ -1,27 +1,66 @@
 [
     {
         "id": "moonfall",
+        "name": "Moonfall Keep",
         "level": 3,
-        "name": "Moonfall Keep"
+        "deep_link": null,
+        "coords": null,
+        "region": null
     },
     {
         "id": "watchold",
+        "name": "Watchold",
         "level": 5,
-        "name": "Watchold"
+        "deep_link": null,
+        "coords": null,
+        "region": null
     },
     {
         "id": "festivia",
+        "name": "Keep Festivia",
         "level": 7,
-        "name": "Keep Festivia"
+        "deep_link": null,
+        "coords": null,
+        "region": null
     },
     {
         "id": "momofort",
+        "name": "Momofort",
         "level": 5,
-        "name": "Momofort"
+        "deep_link": null,
+        "coords": null,
+        "region": null
     },
     {
         "id": "steadfast",
+        "name": "Steadfast Citadel",
         "level": 5,
-        "name": "Steadfast Citadel"
+        "deep_link": null,
+        "coords": null,
+        "region": null
+    },
+    {
+        "id": "fortofpledges",
+        "name": "Fort of Pledges",
+        "level": 4,
+        "deep_link": null,
+        "coords": null,
+        "region": null
+    },
+    {
+        "id": "ochyrozoni",
+        "name": "Ochyro Zoni",
+        "level": 5,
+        "deep_link": "https://slgd.onelink.me/Z4mA/w6ttqqxy?server=20000&cityid=801&blockid=5180809&action=1",
+        "coords": "808,1480",
+        "region": "Orion"
+    },
+    {
+        "id": "gatevarasova",
+        "name": "Gate Varasova",
+        "level": 8,
+        "deep_link": "https://slgd.onelink.me/Z4mA/w6ttqqxy?server=20000&cityid=89002&blockid=5422806&action=1",
+        "coords": "1305,1549",
+        "region": "Orion"
     }
 ]
