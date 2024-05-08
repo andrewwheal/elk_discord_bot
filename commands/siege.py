@@ -1,5 +1,5 @@
 import os
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Tuple
 import logging
 import datetime
 from enum import Enum
@@ -14,6 +14,9 @@ class City(NamedTuple):
     id: str
     name: str
     level: int
+    deep_link: str = None
+    coords: Tuple[int, int] = None
+    region: str = None
 
     @property
     def full_name(self):
@@ -92,7 +95,16 @@ class Siege(discord.ext.commands.Cog):
         role = discord.utils.get(interaction.guild.roles, name='Server 01')
 
         message_content = f"# {city.full_name}\nSiege will start at <t:{start_time:%s}:F> (that's <t:{start_time:%s}:R>)"
-        message_content += f'\n{role.mention} React with whether you will be joining this siege'
+
+        if city.deep_link:
+            link_text = city.name
+
+            if city.coords:
+                link_text += f' ({city.coords})'
+
+            message_content += f'\nLink to city in game: [{link_text}]({city.deep_link})'
+
+        message_content += f'\n\n{role.mention} React with whether you will be joining this siege'
         for reaction, reason in reactions.items():
             message_content += f"\n\t{reaction} {reason}"
 
@@ -139,22 +151,41 @@ class Siege(discord.ext.commands.Cog):
         else:
             await interaction.response.send_message(f'There was an error scheduling the siege: {error}', ephemeral=True)
 
-    @siege.command(description='Add a new city (etc) that we can siege')
-    async def add_city(self, interaction: discord.Interaction, name: str, level: int):
+    @siege.command(description='Add a new city/gate that we can siege')
+    @discord.app_commands.describe(
+        name='Name of the city (e.g. "Ochyro Zoni")',
+        level='Numeric level (e.g. "5")',
+        coordinates='Coordinates of the city (e.g. `808,1480`, note no space or brackets)',
+        deep_link='The link provided when sharing in game to an external app',
+        region='Name of the region the city is in (e.g. "Orion")'
+    )
+    async def add_city(self, interaction: discord.Interaction, name: str, level: int, coordinates: str = None, deep_link: str = None, region: str = None):
         await self.bot.log_command_to_discord('siege.add_city', interaction.user, interaction.channel, {'name': name, 'level': level})
 
         id = name.replace(' ', '').lower()
-        self.cities.append({"id": id, "name": name, "level": level})
+
+        city = City(id, name, level, deep_link, coordinates, region)
+
+        self.cities.update({id: city})
         self.save_cities()
-        await interaction.response.send_message('City added', ephemeral=True)
+
+        await interaction.response.send_message(f'City added: {city.full_name}', ephemeral=True)
 
     @siege.command(description='List the currently configured cities available for us to siege')
     async def list_cities(self, interaction: discord.Interaction):
         await self.bot.log_command_to_discord('siege.list_cities', interaction.user, interaction.channel)
 
         message = 'Here are the cities we can siege that are currently configured:'
-        for city in self.cities:
-            message += f"\n\tLv.{city['level']} {city['name']}"
+        for city in self.cities.values():
+            message += f"\n\t{city.full_name}"
+
+            if city.deep_link:
+                if city.coords:
+                    message += f" [({city.coords})]({city.deep_link})"
+                else:
+                    message += f" [game link]({city.deep_link})"
+            elif city.coords:
+                message += f' ({city.coords})'
 
         await interaction.response.send_message(message, ephemeral=True)
 
