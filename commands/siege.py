@@ -20,7 +20,10 @@ class City(NamedTuple):
 
     @property
     def full_name(self):
-        return f'Lv.{self.level} {self.name}'
+        if self.level > 0:
+            return f'Lv.{self.level} {self.name}'
+        else:
+            return self.name
 
 
 class Siege(discord.ext.commands.Cog):
@@ -80,7 +83,12 @@ class Siege(discord.ext.commands.Cog):
             self.logger.exception(f'siege.start time not valid: {time}')
             raise ValueError('The provided time is not valid')
 
-        city = self.get_city(city)
+        try:
+            city = self.get_city(city)
+        except KeyError:
+            # Mock a fake city object
+            city = City(id=city, name=city, level=0)
+
         start_string = f'{day}T{time}Z'
         start_time = datetime.datetime.fromisoformat(start_string)
 
