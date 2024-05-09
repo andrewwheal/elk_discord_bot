@@ -114,7 +114,7 @@ class ELKBot(commands.Bot):
         if not self.bot_channel:
             return
 
-        return await self.bot_channel.send(message, silent=silent)
+        return await self.bot_channel.send(message, allowed_mentions=discord.AllowedMentions.none(), silent=silent)
 
     async def log_command_to_discord(self, command: str, user: discord.User, channel: discord.TextChannel, content: any = None):
         message = f'Command `{command}` called by {user.mention} in {channel.mention}'
@@ -146,7 +146,6 @@ class ELKBot(commands.Bot):
             await self.log_to_discord(f"Unknown command `{command}` tried to be invoked by {ctx.author.mention} in {ctx.channel.mention} at {ctx.message.jump_url}")
         else:
             self.logger.error(f'Bot command error: {type(error)} {error}')
-            await ctx.send(f"Bot command error: {error}", ephemeral=True)
             await self.log_to_discord(f"Bot command error: {error}")
 
     def on_error(self, event: str, *args, **kwargs):
